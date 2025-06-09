@@ -5,9 +5,12 @@ set -o pipefail
 set -u
 
 declare WORK_DIR="$(dirname "$(readlink -f $0)")"
-declare FOOD_OPTIONS="food_options.txt"
-declare FOOD_OPTIONS_FILE="${WORK_DIR}/food_options.txt"
+declare FOOD_OPTIONS_BASENAME="food_options.txt"
+declare FOOD_STOCK_BASENAME="food_stock.txt"
+declare FOOD_OPTIONS_FILE="${WORK_DIR}/${FOOD_OPTIONS_BASENAME}"
+declare FOOD_STOCK_FILE="${WORK_DIR}/${FOOD_STOCK_BASENAME}"
 declare -a FOOD_ARRAY=()
+declare -A FOOD_STOCK_ARRAY=()
 
 printColor() {
     text=${1}
@@ -71,13 +74,20 @@ checkUserType() {
 }
 
 adminMessage() {
-    printColor "$(printf "%s\n%s\n%s")
-    "Enter Food And Quantity" "Yellow" 
-    'eg. "Amala 2" ' "Yellow" 
-    "Enter 'end' To Exit" "Yellow" )"
+    printColor "\n\tEnter Food And Quantity. eg 'Amala 2'\n\tEnter 'end' To Exit" "Yellow"
+}
+
+checkFiles() {
+    [[ -f $FOOD_OPTIONS_FILE ]] || (
+        touch "$WORK_DIR/$FOOD_OPTIONS_BASENAME"
+        chmod 755 "$WORK_DIR/$FOOD_OPTIONS_BASENAME"
+    )
+    [[ -f $FOOD_STOCK_FILE ]] || (
+        touch "$WORK_DIR/$FOOD_STOCK_BASENAME"
+        chmod 755 "$WORK_DIR/$FOOD_STOCK_BASENAME"
+    )
 }
 addItems() {
-    [[ -f $FOOD_OPTIONS_FILE ]] || (touch "$WORK_DIR/$FOOD_OPTIONS")
     while true; do
         read -p "Enter Food: " food qty
 
@@ -86,13 +96,41 @@ addItems() {
         fi
         [[ ! -z ${qty} ]] || (terminate "Quantity Is Missing" "127")
         for ((i = 0; i < qty; i++)); do
-            FOOD_ARRAY[${#FOOD_ARRAY[@]}]="${food}"
-
+            FOOD_ARRAY[${#FOOD_ARRAY[@]}]="${food^^}"
+            if [[ -v FOOD_STOCK_ARRAY["${food^^}"] ]]; then
+                ((FOOD_STOCK_ARRAY["${food^^}"]++))
+            else
+                FOOD_STOCK_ARRAY["${food^^}"]=1
+            fi
         done
 
     done
     printf "%s\n" "${FOOD_ARRAY[@]}" >>${FOOD_OPTIONS_FILE}
 
+    # update stock
+    : >"${FOOD_STOCK_FILE}"
+    for key in "${!FOOD_STOCK_ARRAY[@]}"; do
+        printf "%s:%s\n" "${key}" "${FOOD_STOCK_ARRAY["${key}"]}" >>${FOOD_STOCK_FILE}
+    done
+}
+loadFoodFile() {
+    while read food; do
+        # Skip empty lines
+        # [[ -z "$food" ]] && continue
+        if [[ -v FOOD_STOCK_ARRAY["${food^^}"] ]]; then
+            ((FOOD_STOCK_ARRAY["${food^^}"]++))
+        else
+            FOOD_STOCK_ARRAY["${food^^}"]=1
+        fi
+    done <"$FOOD_OPTIONS_FILE"
+
+}
+
+loadFoodStock() {
+    while IFS=':' read key value || [[ -n "${key}" ]]; do
+        [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+        printf "%s:%s\n" "$key" "$value"
+    done <"${FOOD_STOCK_FILE}"
 }
 
 # Run Program
@@ -103,6 +141,8 @@ welcome
 
 if [[ $user == "ADMIN" ]]; then
     adminMessage
+    checkFiles
+    loadFoodFile
     addItems
 fi
 exit 0
