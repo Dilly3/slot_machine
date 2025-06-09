@@ -4,26 +4,31 @@ set -e
 set -o pipefail
 set -u
 
+declare WORK_DIR="$(dirname "$(readlink -f $0)")"
+declare FOOD_OPTIONS="food_options.txt"
+declare FOOD_OPTIONS_FILE="${WORK_DIR}/food_options.txt"
+declare -a FOOD_ARRAY=()
+
 printColor() {
     text=${1}
     local -r color="${2^^}"
     case $color in "RED")
-        echo -e "\e[1;31m${text}\e[0m\n"
+        echo -e "\n\e[1;31m${text}\e[0m\n"
         ;;
     "BLUE")
-        echo -e "\e[1;34m${text}\e[0m\n"
+        echo -e "\n\e[1;34m${text}\e[0m\n"
         ;;
     "YELLOW")
-        echo -e "\e[1;33m${text}\e[0m\n"
+        echo -e "\n\e[1;33m${text}\e[0m\n"
         ;;
     "GREEN")
-        echo -e "\e[1;32m${text}\e[0m\n"
+        echo -e "\n\e[1;32m${text}\e[0m\n"
         ;;
     "CYAN")
-        echo -e "\e[1;36m${text}\e[0m\n"
+        echo -e "\n\e[1;36m${text}\e[0m\n"
         ;;
     "ORANGE")
-        echo -e "\e[1;33m${text}\e[0m\n"
+        echo -e "\n\e[1;33m${text}\e[0m\n"
         ;;
     *) ;;
     esac
@@ -53,7 +58,9 @@ verifyArguments() {
         )
     fi
 
-    case ${2^^} in "ADMIN" | "CUSTOMER")
+}
+checkUserType() {
+    case ${1^^} in "ADMIN" | "CUSTOMER")
         :
         ;;
     *)
@@ -63,6 +70,39 @@ verifyArguments() {
     esac
 }
 
-verifyArguments $# $1
+adminMessage() {
+    printColor "$(printf "%s\n%s\n%s")
+    "Enter Food And Quantity" "Yellow" 
+    'eg. "Amala 2" ' "Yellow" 
+    "Enter 'end' To Exit" "Yellow" )"
+}
+addItems() {
+    [[ -f $FOOD_OPTIONS_FILE ]] || (touch "$WORK_DIR/$FOOD_OPTIONS")
+    while true; do
+        read -p "Enter Food: " food qty
+
+        if [[ "${food^^}" == "END" ]]; then
+            break
+        fi
+        [[ ! -z ${qty} ]] || (terminate "Quantity Is Missing" "127")
+        for ((i = 0; i < qty; i++)); do
+            FOOD_ARRAY[${#FOOD_ARRAY[@]}]="${food}"
+
+        done
+
+    done
+    printf "%s\n" "${FOOD_ARRAY[@]}" >>${FOOD_OPTIONS_FILE}
+
+}
+
+# Run Program
+declare user="${1^^}"
+verifyArguments $#
+checkUserType $1
 welcome
+
+if [[ $user == "ADMIN" ]]; then
+    adminMessage
+    addItems
+fi
 exit 0
