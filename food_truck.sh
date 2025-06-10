@@ -16,28 +16,36 @@ printColor() {
     text=${1}
     local -r color="${2^^}"
     case $color in "RED")
-        echo -e "\n\e[1;31m${text}\e[0m\n"
+        echo -e "\e[1;31m${text}\e[0m\n"
         ;;
     "BLUE")
-        echo -e "\n\e[1;34m${text}\e[0m\n"
+        echo -e "\e[1;34m${text}\e[0m\n"
         ;;
     "YELLOW")
-        echo -e "\n\e[1;33m${text}\e[0m\n"
+        echo -e "\e[1;33m${text}\e[0m\n"
         ;;
     "GREEN")
-        echo -e "\n\e[1;32m${text}\e[0m\n"
+        echo -e "\e[1;32m${text}\e[0m\n"
         ;;
     "CYAN")
-        echo -e "\n\e[1;36m${text}\e[0m\n"
+        echo -e "\e[1;36m${text}\e[0m\n"
         ;;
     "ORANGE")
-        echo -e "\n\e[1;33m${text}\e[0m\n"
+        echo -e "\e[1;38m${text}\e[0m\n"
+        ;;
+    "WHITE")
+        echo -e "\e[1;91m${text}\e[0m\n"
         ;;
     *) ;;
     esac
 }
 help() {
-    printColor "Info: Run script with a user type , eg. customer or admin" "Yellow"
+    local -r message="
+INFO: Script expects one argument, user-type.
+user-type ( eg. customer or admin )
+eg ./food_truck.sh customer.
+"
+    printColor "$message" "Yellow"
 }
 terminate() {
     msg="error: ${1}"
@@ -48,8 +56,11 @@ terminate() {
 }
 
 welcome() {
-    printColor "$(printf "\n%s\n" "===============================================")" "Orange"
-    printColor "$(printf "%s\n" "=========Welcome to Food Truck ================")" "Cyan"
+    message1="==============================================="
+    message2="=========Welcome to Food Truck ================
+==============================================="
+    printColor "${message1}" "Orange"
+    printColor "${message2}" "Cyan"
 }
 
 verifyArguments() {
@@ -57,7 +68,7 @@ verifyArguments() {
     if [[ $1 -lt $MIN_ARGS ]]; then
         (
             help
-            terminate "user type missing" "127"
+            terminate "user-type missing" "127"
         )
     fi
 
@@ -68,13 +79,25 @@ checkUserType() {
         ;;
     *)
         help
-        terminate "invalid user type" "127"
+        terminate "invalid user-type" "127"
         ;;
     esac
 }
 
 adminMessage() {
-    printColor "\n\tEnter Food And Quantity. eg 'Amala 2'\n\tEnter 'end' To Exit" "Yellow"
+    message="
+Enter Food And Quantity.
+eg 'Amala 2'.
+Enter 'end' To Exit"
+    printColor "${message}" "Yellow"
+}
+
+customerMessage() {
+    message="
+What would you love to eat?,
+Select from the menu. eg. egusi , fufu.
+type 'end' to quit."
+    printColor "$message" "Yellow"
 }
 
 checkFiles() {
@@ -87,6 +110,36 @@ checkFiles() {
         chmod 755 "$WORK_DIR/$FOOD_STOCK_BASENAME"
     )
 }
+
+updateStock() {
+    : >"${FOOD_STOCK_FILE}"
+    for key in "${!FOOD_STOCK_ARRAY[@]}"; do
+        if [[ ${FOOD_STOCK_ARRAY["${key}"]} -eq 0 ]]; then
+            continue
+        fi
+        printf "%s:%s\n" "${key}" "${FOOD_STOCK_ARRAY["${key}"]}" >>${FOOD_STOCK_FILE}
+    done
+    : >"${FOOD_OPTIONS_FILE}"
+    for item in "${FOOD_ARRAY[@]}"; do
+        printf "%s\n" "${item^^}" >>${FOOD_OPTIONS_FILE}
+    done
+
+}
+
+updateFoodArray() {
+    local choice=${1}
+    local qty=${2}
+    for i in "${!FOOD_ARRAY[@]}"; do
+        if [[ $qty -lt 1 ]]; then
+            break
+        fi
+        if [[ "${FOOD_ARRAY[i]}" == "${choice^^}" ]]; then
+            unset FOOD_ARRAY[i]
+            ((qty--))
+        fi
+    done
+}
+
 addItems() {
     while true; do
         read -p "Enter Food: " food qty
@@ -108,34 +161,94 @@ addItems() {
     printf "%s\n" "${FOOD_ARRAY[@]}" >>${FOOD_OPTIONS_FILE}
 
     # update stock
-    : >"${FOOD_STOCK_FILE}"
-    for key in "${!FOOD_STOCK_ARRAY[@]}"; do
-        printf "%s:%s\n" "${key}" "${FOOD_STOCK_ARRAY["${key}"]}" >>${FOOD_STOCK_FILE}
-    done
+    updateStock
 }
 loadFoodFile() {
     while read food; do
         # Skip empty lines
-        # [[ -z "$food" ]] && continue
+        [[ -z "$food" ]] && continue
         if [[ -v FOOD_STOCK_ARRAY["${food^^}"] ]]; then
             ((FOOD_STOCK_ARRAY["${food^^}"]++))
         else
             FOOD_STOCK_ARRAY["${food^^}"]=1
         fi
+        FOOD_ARRAY[${#FOOD_ARRAY[@]}]="$food"
     done <"$FOOD_OPTIONS_FILE"
 
 }
 
 loadFoodStock() {
-    while IFS=':' read key value || [[ -n "${key}" ]]; do
+    while IFS="$IFS:" read key value || [[ -n "${key}" ]]; do
         [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
         printf "%s:%s\n" "$key" "$value"
     done <"${FOOD_STOCK_FILE}"
 }
 
+printMenu() {
+    printColor "MENU: " "Green"
+    for key in "${!FOOD_STOCK_ARRAY[@]}"; do
+        printColor "${key^^}" "Orange"
+    done
+}
+
+collectOrder() {
+    msg="
+Make food choice and Quantity. eg 'Semo 2'
+Press 'end' to Quit
+"
+    orderProcessing="
+Thank you , We Are Processing Order.
+Will be served in 15Mins.
+"
+    foodNotInMenu="
+Sorry, The food You Ordered is not in Menu
+"
+    orderCollected="
+Thank You.
+Your Order has been collected"
+    notEnoughInStock="
+Sorry we dont Have enough in stock to carry out your order
+"
+
+    printColor "${msg}" "White"
+    orderMade="false"
+
+    while true; do
+        read -p "Food choice and Qty:" choice qty
+        if [[ "${choice^^}" == "END" ]]; then
+            break
+        fi
+        [[ ! -z ${qty} ]] || (terminate "Quantity Is Missing" "127")
+        if [[ ! -v FOOD_STOCK_ARRAY["${choice^^}"] ]]; then
+            printColor "INFO: ${foodNotInMenu}" "Yellow"
+            continue
+        elif [[ $qty -gt ${FOOD_STOCK_ARRAY["${choice^^}"]} ]]; then
+            printColor "INFO: ${notEnoughInStock}" "Yellow"
+            continue
+        elif [[ $qty == "1" && ${FOOD_STOCK_ARRAY["${choice^^}"]} == "1" ]]; then
+            ((FOOD_STOCK_ARRAY["${choice^^}"]--))
+            printColor "${orderCollected}" "Green"
+            orderMade="true"
+        else
+            ((FOOD_STOCK_ARRAY["${choice^^}"] -= qty))
+            printColor "${orderCollected}" "Green"
+            orderMade="true"
+        fi
+        # Update food array
+        updateFoodArray "$choice" "$qty"
+
+    done
+    #update stock
+    updateStock
+    if [[ "$orderMade" == "true" ]]; then
+        printColor "${orderProcessing}" "Green"
+    fi
+
+}
+
 # Run Program
-declare user="${1^^}"
 verifyArguments $#
+declare user="${1^^}"
 checkUserType $1
 welcome
 
@@ -144,5 +257,13 @@ if [[ $user == "ADMIN" ]]; then
     checkFiles
     loadFoodFile
     addItems
+fi
+
+if [[ $user == "CUSTOMER" ]]; then
+    customerMessage
+    checkFiles
+    loadFoodFile
+    printMenu
+    collectOrder
 fi
 exit 0
