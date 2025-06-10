@@ -1,4 +1,5 @@
 ## Overview
+---
 #### This script is a program for a food dispencer (Food Truck)
 #### Run the script either as an admin or a customer
 
