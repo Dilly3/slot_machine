@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+# This script is a program for a food dispencer (Food Truck)
+# Run the script either as an admin or a customer
+# Admin:
+#   Admin user takes inventory and update stock of food availabe
+# Customer:
+#   Customer User makes order according to what is available in the menu.
+#   If the desired meal and the required quatity is available in stock
+#   Then customer order is taken and processed.
+
 set -e
 set -o pipefail
 set -u
