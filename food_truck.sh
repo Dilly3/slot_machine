@@ -63,6 +63,26 @@ welcome() {
     printColor "${message2}" "Cyan"
 }
 
+goodbyeCustomer() {
+    local message="Thanks for your Patronage!!
+Hope to see you again
+=================================="
+    local footnote="
+========== Food Truck ============
+"
+    printColor "$message" "Green"
+    printColor "$footnote" "Cyan"
+
+}
+
+goodbyeAdmin() {
+    local message="GoodBye!!"
+    local footnote="
+========== Food Truck ============"
+    printColor "$message" "Green"
+    printColor "$footnote" "Cyan"
+}
+
 verifyArguments() {
     declare -i MIN_ARGS=1
     if [[ $1 -lt $MIN_ARGS ]]; then
@@ -210,7 +230,7 @@ Your Order has been collected"
 Sorry we dont Have enough in stock to carry out your order
 "
 
-    printColor "${msg}" "White"
+    printColor "${msg}" "Blue"
     orderMade="false"
 
     while true; do
@@ -257,6 +277,7 @@ if [[ $user == "ADMIN" ]]; then
     checkFiles
     loadFoodFile
     addItems
+    goodbyeAdmin
 fi
 
 if [[ $user == "CUSTOMER" ]]; then
@@ -265,5 +286,6 @@ if [[ $user == "CUSTOMER" ]]; then
     loadFoodFile
     printMenu
     collectOrder
+    goodbyeCustomer
 fi
 exit 0
