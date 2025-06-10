@@ -11,11 +11,10 @@
 ```
 
 - ## Admin User:
-###   Admin user takes inventory and update stock of food availabe
+###   Admin user takes inventory and update stock of food available
 - ## Customer User:
 ###   Customer User makes order according to what is available in the menu.
-###   If the desired meal and the required quatity is available in stock
-###  Then customer order is taken and processed.
+###   If the desired meal and the required quantity is available in stock, then customer order is taken and processed.
 
 
 ## Architecture
@@ -26,6 +25,20 @@
 >> #### this is where the food and the quantity available for each food is stored
 ### Only admin user can update these files.
 
+### When the program is run for the first time, the food menu is empty.
+### Admin user will have to update menu first.
+### Run as Admin 
+```bash
+./food_truck.sh admin
+```
+
+### After the menu has been Updated , customer can make order.
+### Run as Customer
+
+```bash
+./food_truck.sh customer
+```
+### When the customer order is received and processed, the ```food_options.txt``` and the ```food_stock.txt``` files are updated accordingly.
 ## Author
 - ### Name: Michael Olisa. A 
 - ### Email: michael.anikamadu@gmail.com
